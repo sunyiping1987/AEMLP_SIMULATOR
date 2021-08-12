@@ -1,0 +1,393 @@
+import os
+import tensorflow as tf
+import numpy as np
+from tensorflow import keras
+from PIL import Image
+from matplotlib import pyplot as plt
+import xlrd
+import xlwt  # 引用写入的库
+
+tf.random.set_seed(22)
+np.random.seed(22)
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+assert tf.__version__.startswith('2.')
+
+def excel_read_inputs_Xtrain():  # 定义了一个读取excel的函数
+    wb1 = xlrd.open_workbook(
+        r'D:\BaiduNetdiskDownload\GAN_Learning\deeplearning_tensorflow2.0\深度学习与TF-PPT和代码\深度学习与TF-PPT和代码\lesson22-VAE\comsol0719\XTrain0_normal.xlsx')  # 打开Excel文件
+    sheet_1 = wb1.sheet_by_name('Sheet1')  # 通过excel表格名称(rank)获取工作表
+    names_1 = []  # 创建空list，用来保存人物名称一列
+    for a in range(sheet_1.nrows):  # 循环读取表格内容（每次读取一行数据）
+        cells_1 = sheet_1.row_values(a)  # 每行数据赋值给cells
+        names = cells_1  # 循环读取cell没一列的数据，cell[0]就是包含了每一行的人物名称
+        names_1.append(names)  # append这是一个插入函数，功能可以在list之后插入一个name数据
+    return names_1
+
+x_train = excel_read_inputs_Xtrain()  # 这里调用了excel_read的函数，此时a就包含了names、ids、ranks三列数据
+x_train = tf.cast(x_train, tf.float32)
+x_train = (x_train + 1) / 2
+print('x_train:', x_train.shape, tf.reduce_min(x_train),tf.reduce_max(x_train))
+
+
+def excel_read_inputs_Ytrain():  # 定义了一个读取excel的函数
+    wb1 = xlrd.open_workbook(
+        r'D:\BaiduNetdiskDownload\GAN_Learning\deeplearning_tensorflow2.0\深度学习与TF-PPT和代码\深度学习与TF-PPT和代码\lesson22-VAE\comsol0719\YTrain0.xlsx')  # 打开Excel文件
+    sheet_1 = wb1.sheet_by_name('Sheet1')  # 通过excel表格名称(rank)获取工作表
+    names_1 = []  # 创建空list，用来保存人物名称一列
+    for a in range(sheet_1.nrows):  # 循环读取表格内容（每次读取一行数据）
+        cells_1 = sheet_1.row_values(a)  # 每行数据赋值给cells
+        names = cells_1  # 循环读取cell没一列的数据，cell[0]就是包含了每一行的人物名称
+        names_1.append(names)  # append这是一个插入函数，功能可以在list之后插入一个name数据
+    return names_1
+
+y_train = excel_read_inputs_Ytrain()  # 这里调用了excel_read的函数，此时a就包含了names、ids、ranks三列数据
+y_train = tf.cast(y_train, tf.float32)
+print('y_train_shape:', y_train.shape)
+# y_train = y_train[:100]
+# inputs_T = tf.transpose(inputs)
+# print('inputs.shape:', y_train.shape)
+print(tf.reduce_min(y_train), tf.reduce_max(y_train), y_train.shape)
+
+def excel_read_inputs_Xtest():  # 定义了一个读取excel的函数
+    wb1 = xlrd.open_workbook(
+        r'D:\BaiduNetdiskDownload\GAN_Learning\deeplearning_tensorflow2.0\深度学习与TF-PPT和代码\深度学习与TF-PPT和代码\lesson22-VAE\comsol0719\XValidation0_normal.xlsx')  # 打开Excel文件
+    sheet_1 = wb1.sheet_by_name('Sheet1')  # 通过excel表格名称(rank)获取工作表
+    names_1 = []  # 创建空list，用来保存人物名称一列
+    for a in range(sheet_1.nrows):  # 循环读取表格内容（每次读取一行数据）
+        cells_1 = sheet_1.row_values(a)  # 每行数据赋值给cells
+        names = cells_1  # 循环读取cell没一列的数据，cell[0]就是包含了每一行的人物名称
+        names_1.append(names)  # append这是一个插入函数，功能可以在list之后插入一个name数据
+    return names_1
+
+x_test = excel_read_inputs_Xtest()  # 这里调用了excel_read的函数，此时a就包含了names、ids、ranks三列数据
+x_test = tf.cast(x_test, tf.float32)
+x_test = (x_test + 1) / 2
+print('x_test:', x_test.shape)
+
+def excel_read_inputs_Ytest():  # 定义了一个读取excel的函数
+    wb1 = xlrd.open_workbook(
+        r'D:\BaiduNetdiskDownload\GAN_Learning\deeplearning_tensorflow2.0\深度学习与TF-PPT和代码\深度学习与TF-PPT和代码\lesson22-VAE\comsol0719\YValidation0.xlsx')  # 打开Excel文件
+    sheet_1 = wb1.sheet_by_name('Sheet1')  # 通过excel表格名称(rank)获取工作表
+    names_1 = []  # 创建空list，用来保存人物名称一列
+    for a in range(sheet_1.nrows):  # 循环读取表格内容（每次读取一行数据）
+        cells_1 = sheet_1.row_values(a)  # 每行数据赋值给cells
+        names = cells_1  # 循环读取cell没一列的数据，cell[0]就是包含了每一行的人物名称
+        names_1.append(names)  # append这是一个插入函数，功能可以在list之后插入一个name数据
+    return names_1
+
+y_test = excel_read_inputs_Ytest()  # 这里调用了excel_read的函数，此时a就包含了names、ids、ranks三列数据
+y_test = tf.cast(y_test, tf.float32)
+print('y_test:', y_test.shape)
+
+print(x_train.shape, y_train.shape)
+print(x_test.shape, y_test.shape)
+
+
+
+# image grid
+new_im = Image.new('L', (280, 280))
+
+image_size = 28*28
+# h_dim = 512
+z_dim = 30
+num_epochs = 170
+num_epochs1 = 300
+batch_size = 100
+learning_rate = 1e-3
+learning_rate1 = 1e-3
+
+class VAE(tf.keras.Model):
+
+    def __init__(self):
+        super(VAE, self).__init__()
+        # 28,28,1>=14,14,8>=7,7,16>=3,3,32
+        # input => h
+
+        self.fc0_a1 = keras.layers.Dense(1048)
+        self.fc0_a2 = keras.layers.Dense(512)
+        self.fc0_a3 = keras.layers.Dense(256)
+
+        self.fc0 = keras.layers.Dense(128)
+        self.fc0_0 = keras.layers.Dense(64)
+        self.fc0_1 = keras.layers.Dense(32)
+
+        self.fc1 = keras.layers.Dense(z_dim)
+
+        self.fc2 = keras.layers.Dense(32)
+        self.fc2_0 = keras.layers.Dense(64)
+        self.fc2_1 = keras.layers.Dense(128)
+
+        self.fc0_b1 = keras.layers.Dense(256)
+        self.fc0_b2 = keras.layers.Dense(512)
+        self.fc0_b3 = keras.layers.Dense(1048)
+        # 3*3*32>=3*3*32
+
+        self.fc3 = keras.layers.Dense(4)
+
+    def encode(self, x):
+
+        h = self.fc0_a1(x)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.3)
+
+        h = self.fc0_a2(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.3)
+
+        h = self.fc0_a3(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.3)
+
+        h = self.fc0(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.5)
+
+        h = self.fc0_0(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.5)
+
+        h = self.fc0_1(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.5)
+
+        h = self.fc1(h)
+        h = tf.nn.sigmoid(h)
+        return h
+
+
+    def decode_logits(self, z):
+        # 30>=3*3*32
+        h = self.fc2(z)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.5)
+
+        h = self.fc2_0(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.5)
+
+        h = self.fc2_1(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.5)
+
+        h = self.fc0_b1(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.3)
+
+        h = self.fc0_b2(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.3)
+
+        h = self.fc0_b3(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.3)
+
+        h = self.fc3(h)
+
+        return h
+
+    def decode(self, z):
+        h = self.decode_logits(z)
+        h = tf.nn.sigmoid(h)
+        # hm = tf.nn.sigmoid(hm)
+        return h
+
+    def call(self, inputs, training=None, mask=None):
+        # encoder
+        z0 = self.encode(inputs)
+       # sample [b,28,28]>=[b,30]
+        x_reconstructed_logits = self.decode_logits(z0)
+        x_reconstructed = self.decode(z0)
+
+        return x_reconstructed_logits, x_reconstructed, z0
+
+
+class MLP(tf.keras.Model):
+
+    def __init__(self):
+        super(MLP, self).__init__()
+        # 28,28,1>=14,14,8>=7,7,16>=3,3,32
+        # input => h
+        self.fcm0_0 = keras.layers.Dense(2056)
+        self.fcm0_1 = keras.layers.Dense(2056)
+        self.fcm0_2 = keras.layers.Dense(1048)
+        self.fcm0 = keras.layers.Dense(512)
+        self.fcm1 = keras.layers.Dense(256)
+        self.fcm2 = keras.layers.Dense(128)
+        self.fcm3 = keras.layers.Dense(64)
+
+        self.fcm4 = keras.layers.Dense(z_dim)
+
+    def Mul_LP(self, y):
+        h = self.fcm0_0(y)
+        h = tf.nn.leaky_relu(h)
+        h = tf.nn.dropout(h, 0.3)
+
+        h = self.fcm0_1(h)
+        h = tf.nn.leaky_relu(h)
+        h = tf.nn.dropout(h, 0.3)
+
+        h = self.fcm0_2(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.3)
+
+        h = self.fcm0(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.5)
+
+        h = self.fcm1(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.5)
+
+        h = self.fcm2(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.5)
+
+        h = self.fcm3(h)
+        h = tf.nn.leaky_relu(h)
+        # h = tf.nn.dropout(h, 0.5)
+
+        h = tf.nn.sigmoid(self.fcm4(h))
+        return h
+
+    def call(self, inputs, training=None, mask=None):
+        # encoder
+        z1 = self.Mul_LP(inputs)
+        return z1
+
+
+model_AT = VAE()
+model_AT.build(input_shape=(batch_size, 4))
+model_AT.summary()
+optimizer = keras.optimizers.Adam(learning_rate)
+
+
+model_MLP = MLP()
+model_MLP.build(input_shape=(batch_size, 30))
+model_MLP.summary()
+
+optimizer1 = keras.optimizers.Adam(learning_rate1)
+
+
+# we do not need label
+print(x_train.shape, y_train.shape)
+dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+dataset = dataset.shuffle(batch_size*40).batch(batch_size)
+# dataset_test = tf.data.Dataset.from_tensor_slices(x_test)
+
+
+num_batches = x_train.shape[0] // batch_size
+
+
+
+# z = tf.random.normal((batch_size, z_dim))
+# print(tf.reduce_min(z), tf.reduce_max(z), z.shape)
+# print(tf.reduce_min(z), tf.reduce_max(z), z[:2])
+
+
+for epoch in range(num_epochs):
+
+    for step, (x, y) in enumerate(dataset):
+
+        with tf.GradientTape() as AT_tape:
+
+            # Forward pass
+            x_reconstruction_logits, x_reconstruction, z0 = model_AT(x)
+
+            reconstruction_loss = tf.square(x - x_reconstruction)
+
+            # reconstruction_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=x, logits=x_reconstruction_logits)
+
+            reconstruction_loss = tf.reduce_sum(reconstruction_loss) / x.shape[0]
+
+            loss = tf.reduce_mean(reconstruction_loss)
+
+        gradients_AT = AT_tape.gradient(loss, model_AT.trainable_variables)
+        for g in gradients_AT:
+            tf.clip_by_norm(g, 15)
+        optimizer.apply_gradients(zip(gradients_AT, model_AT.trainable_variables))
+
+        if (step + 1) % 5 == 0:
+            print("Epoch[{}/{}], Step [{}/{}], Reconst Loss: {:.4f}"
+                  .format(epoch + 1, num_epochs, step + 1, num_batches, float(reconstruction_loss)))
+
+    x_reconstruction_logits, x_reconstruction, _ = model_AT(x[:batch_size // 2], y[:batch_size // 2])
+
+    print('x_reconstruction:', x_reconstruction.shape, tf.reduce_min(x_reconstruction), tf.reduce_max(x_reconstruction),
+          x_reconstruction[:2])
+    print('x_batch:', x[:batch_size // 2].shape, tf.reduce_min(x[:batch_size // 2]), tf.reduce_max(x[:batch_size // 2]),
+          x[:2])
+
+
+
+# 保存model_AT
+model_AT.save_weights(r'D:\BaiduNetdiskDownload\GAN_Learning\deeplearning_tensorflow2.0\深度学习与TF-PPT和代码\深度学习与TF-PPT和代码\lesson22-VAE\comsol0719\checkpoint_dir\model_AT\weights.ckpt')
+print('saved weights.')
+# del model_MLP
+
+
+z0_dim = model_AT.encode(x_train)
+print('z0_dim', z0_dim.shape)
+
+
+print('............................................')
+print('MLP_model_train.........')
+
+dataset_recons = tf.data.Dataset.from_tensor_slices((y_train, z0_dim)).batch(batch_size)
+
+for epoch in range(num_epochs1):
+
+    for step, (y, z0_dim) in enumerate(dataset_recons):
+
+        with tf.GradientTape() as MLP_tape:
+            z1 = model_MLP(y)
+            # print('z0_dim_shape', z0_dim.shape)
+            # print('z1_shape', z1.shape)
+
+            reconstruction_loss_mlp = tf.square(z0_dim-z1)
+
+            # reconstruction_loss_mlp = tf.nn.sigmoid_cross_entropy_with_logits(labels=z0_dim, logits=z1)
+            reconstruction_loss_mlp = tf.reduce_sum(reconstruction_loss_mlp) / y.shape[0]
+            loss_mlp = tf.reduce_mean(reconstruction_loss_mlp)
+
+        gradients_MLP = MLP_tape.gradient(loss_mlp, model_MLP.trainable_variables)
+        for k in gradients_MLP:
+            tf.clip_by_norm(k, 15)
+        optimizer1.apply_gradients(zip(gradients_MLP, model_MLP.trainable_variables))
+
+        if (step + 1) % 5 == 0:
+            print("Epoch[{}/{}], Step [{}/{}], MLP Loss: {:.4f}"
+                  .format(epoch + 1, num_epochs1, step + 1, num_batches, float(loss_mlp)))
+
+
+# 保存model_MLP
+model_MLP.save_weights(r'D:\BaiduNetdiskDownload\GAN_Learning\deeplearning_tensorflow2.0\深度学习与TF-PPT和代码\深度学习与TF-PPT和代码\lesson22-VAE\comsol0719\checkpoint_dir\model_MLP\weights.ckpt')
+print('saved weights.')
+# del model_MLP
+
+z0_dim_test = model_MLP(y_test)
+z = z0_dim_test
+# z = tf.random.normal((batch_size, z_dim))
+out_last = model_AT.decode(z)  # decode with sigmoid
+out_last = out_last.numpy()
+
+print('outlast_sample', out_last.shape, tf.reduce_min(out_last), tf.reduce_max(out_last), out_last[:3])
+print('reconstructed_test_compare', out_last[:3], x_test[:3])
+
+
+#out_last 保存
+workbook = xlwt.Workbook()
+worksheet = workbook.add_sheet("out_last_saved")  # 新建sheet
+row, col = 0, 0
+
+for item, cost in enumerate(out_last):
+    col = 0
+    for i in range(4):
+        # print('item:', item, 'cost', cost)
+        worksheet.write(item, col, np.float(cost[i]))
+        col += 1
+    row += 1
+workbook.save(r'D:\BaiduNetdiskDownload\GAN_Learning\deeplearning_tensorflow2.0\深度学习与TF-PPT和代码\深度学习与TF-PPT和代码\lesson22-VAE\comsol0719\out_last_saved_tensorflow.xls')  # 保存
+
+print('out_last_saved_tensorflow:', out_last.shape)
+
